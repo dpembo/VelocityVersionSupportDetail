@@ -1,0 +1,12 @@
+# Inclusive Minecraft versions this proxy accepts.
+# A client outside the range sees this on the multiplayer screen, in red,
+# where the player count normally is:
+#     1.21.4 - 26.3 Supported
+# The ping bars stay. Trying to join closes the connection with the same text.
+#
+# Names must be releases this copy of Velocity understands.
+# Versions that share a protocol are the same client: 1.21.7 and 1.21.8 both
+# speak protocol 772, so a minimum of 1.21.8 still accepts 1.21.7.
+
+minimum-version: "1.21.4"
+maximum-version: "26.3"
