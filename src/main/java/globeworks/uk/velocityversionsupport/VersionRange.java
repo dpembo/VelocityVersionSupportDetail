@@ -9,36 +9,59 @@
 
 package globeworks.uk.velocityversionsupport;
 
+import com.velocitypowered.api.network.ProtocolVersion;
+
 /**
- * Inclusive protocol window, plus the version names shown to everyone outside it.
+ * Inclusive version window. A null maximum leaves the upper end open.
+ *
+ * <p>Comparison uses Velocity's version order, not the raw protocol integer. {@code getProtocol()}
+ * can return a snapshot id that does not sort with release protocols, which made an open upper
+ * end treat older clients as new enough.
  */
 public record VersionRange(
         String minimumVersion,
         String maximumVersion,
-        int minimumProtocol,
-        int maximumProtocol) {
+        ProtocolVersion minimum,
+        ProtocolVersion maximum) {
 
     public VersionRange {
         if (minimumVersion == null || minimumVersion.isBlank()) {
             throw new IllegalArgumentException("minimum-version is blank");
         }
-        if (maximumVersion == null || maximumVersion.isBlank()) {
-            throw new IllegalArgumentException("maximum-version is blank");
+        if (minimum == null || !minimum.isSupported()) {
+            throw new IllegalArgumentException("minimum-version is not a supported Minecraft version");
         }
-        if (minimumProtocol > maximumProtocol) {
+        if (maximumVersion != null && maximumVersion.isBlank()) {
+            maximumVersion = null;
+        }
+        if (maximumVersion == null) {
+            maximum = null;
+        } else if (maximum == null || !maximum.isSupported()) {
+            throw new IllegalArgumentException("maximum-version " + maximumVersion + " has no protocol");
+        } else if (maximum.lessThan(minimum)) {
             throw new IllegalArgumentException("minimum-version " + minimumVersion
                     + " is newer than maximum-version " + maximumVersion);
         }
     }
 
-    public boolean allows(int protocol) {
-        return protocol >= minimumProtocol && protocol <= maximumProtocol;
+    public boolean allows(ProtocolVersion client) {
+        if (client == null || !client.isSupported()) {
+            return false;
+        }
+        if (client.lessThan(minimum)) {
+            return false;
+        }
+        return maximum == null || client.noGreaterThan(maximum);
     }
 
     /**
-     * Text the multiplayer screen shows in red when the client protocol does not match.
+     * Text the multiplayer screen shows in red when the client version does not match.
+     * An open upper end is shown as {@code 1.21.1+ Supported}.
      */
     public String label() {
+        if (maximumVersion == null) {
+            return minimumVersion + "+ Supported";
+        }
         return minimumVersion + " - " + maximumVersion + " Supported";
     }
 

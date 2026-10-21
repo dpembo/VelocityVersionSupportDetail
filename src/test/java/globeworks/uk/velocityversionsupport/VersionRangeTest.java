@@ -11,6 +11,7 @@ package globeworks.uk.velocityversionsupport;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -22,33 +23,46 @@ class VersionRangeTest {
 
     @Test
     void labelUsesConfiguredNames() {
-        VersionRange range = new VersionRange("1.21.4", "26.3", 769, 777);
+        VersionRange range = VersionRanges.fromNames("1.21.4", "26.3");
         assertEquals("1.21.4 - 26.3 Supported", range.label());
     }
 
     @Test
     void rangeIsInclusive() {
-        VersionRange range = new VersionRange("1.21.4", "26.3", 769, 777);
-        assertTrue(range.allows(769));
-        assertTrue(range.allows(773));
-        assertTrue(range.allows(777));
-        assertFalse(range.allows(768));
-        assertFalse(range.allows(778));
-        assertFalse(range.allows(-1));
-        assertFalse(range.allows(-2));
+        VersionRange range = VersionRanges.fromNames("1.21.4", "26.3");
+        assertTrue(range.allows(ProtocolVersion.MINECRAFT_1_21_4));
+        assertTrue(range.allows(ProtocolVersion.MINECRAFT_1_21_9));
+        assertTrue(range.allows(ProtocolVersion.MINECRAFT_26_3));
+        assertFalse(range.allows(ProtocolVersion.MINECRAFT_1_21_2));
+        assertFalse(range.allows(ProtocolVersion.UNKNOWN));
+        assertFalse(range.allows(ProtocolVersion.LEGACY));
     }
 
     @Test
     void mismatchedProtocolNeverEqualsTheClient() {
-        VersionRange range = new VersionRange("1.21.4", "26.3", 769, 777);
+        VersionRange range = VersionRanges.fromNames("1.21.4", "26.3");
         assertEquals(-1, range.mismatchedProtocol(763));
         assertEquals(-2, range.mismatchedProtocol(-1));
-        assertFalse(range.allows(range.mismatchedProtocol(763)));
+    }
+
+    @Test
+    void minimumAloneRejectsOlderClientsAndAcceptsNewerOnes() {
+        VersionRange range = VersionRanges.fromNames("1.21.1", "");
+        assertNull(range.maximum());
+        assertEquals("1.21.1+ Supported", range.label());
+        assertFalse(range.allows(ProtocolVersion.MINECRAFT_1_20_5));
+        assertTrue(range.allows(ProtocolVersion.MINECRAFT_1_21));
+        assertTrue(range.allows(ProtocolVersion.MINECRAFT_1_21_7));
+        assertTrue(range.allows(ProtocolVersion.MINECRAFT_26_3));
     }
 
     @Test
     void rejectsReversedProtocols() {
-        assertThrows(IllegalArgumentException.class, () -> new VersionRange("26.3", "1.21.4", 777, 769));
+        assertThrows(IllegalArgumentException.class, () -> new VersionRange(
+                "26.3",
+                "1.21.4",
+                ProtocolVersion.MINECRAFT_26_3,
+                ProtocolVersion.MINECRAFT_1_21_4));
     }
 
     @Test
@@ -58,8 +72,8 @@ class VersionRangeTest {
         VersionRange range = VersionRanges.fromNames(
                 minimum.getVersionIntroducedIn(),
                 maximum.getMostRecentSupportedVersion());
-        assertTrue(range.allows(minimum.getProtocol()));
-        assertTrue(range.allows(maximum.getProtocol()));
+        assertTrue(range.allows(minimum));
+        assertTrue(range.allows(maximum));
         assertEquals(
                 minimum.getVersionIntroducedIn() + " - " + maximum.getMostRecentSupportedVersion() + " Supported",
                 range.label());
@@ -77,7 +91,7 @@ class VersionRangeTest {
     void rejectsRangeWrittenBackwards() {
         ProtocolVersion minimum = firstSupported();
         ProtocolVersion maximum = lastSupported();
-        if (minimum.getProtocol() == maximum.getProtocol()) {
+        if (minimum == maximum) {
             return;
         }
         assertThrows(

@@ -48,10 +48,10 @@ public final class VelocityVersionSupportPlugin {
             throw new IllegalStateException("Could not load config.yml", e);
         }
         server.getEventManager().register(this, new VersionGateListener(range));
-        logger.info("Accepting Minecraft {} through {} (protocols {}-{}).",
-                range.minimumVersion(),
-                range.maximumVersion(),
-                range.minimumProtocol(),
-                range.maximumProtocol());
+        if (range.maximum() == null) {
+            logger.info("Accepting Minecraft {} and newer.", range.minimumVersion());
+        } else {
+            logger.info("Accepting Minecraft {} through {}.", range.minimumVersion(), range.maximumVersion());
+        }
     }
 }

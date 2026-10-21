@@ -56,15 +56,18 @@ public final class ConfigFile {
                 throw new IllegalArgumentException("Invalid config line " + (i + 1) + ": " + raw);
             }
             String key = line.substring(0, colon).trim();
-            String value = unquote(line.substring(colon + 1).trim());
+            String value = parseValue(line.substring(colon + 1));
             if (values.put(key, value) != null) {
                 throw new IllegalArgumentException("Duplicate config key \"" + key + "\"");
             }
         }
         String minimum = values.get(MINIMUM_KEY);
+        if (minimum == null || minimum.isBlank()) {
+            throw new IllegalArgumentException("config.yml must set " + MINIMUM_KEY);
+        }
         String maximum = values.get(MAXIMUM_KEY);
-        if (minimum == null || maximum == null) {
-            throw new IllegalArgumentException("config.yml must set " + MINIMUM_KEY + " and " + MAXIMUM_KEY);
+        if (isUnset(maximum)) {
+            maximum = null;
         }
         return VersionRanges.fromNames(minimum, maximum);
     }
@@ -76,14 +79,27 @@ public final class ConfigFile {
         return line;
     }
 
-    private static String unquote(String value) {
-        if (value.length() >= 2) {
-            char open = value.charAt(0);
-            char close = value.charAt(value.length() - 1);
-            if ((open == '"' && close == '"') || (open == '\'' && close == '\'')) {
-                return value.substring(1, value.length() - 1);
+    private static boolean isUnset(String value) {
+        return value == null
+                || value.isBlank()
+                || value.equals("~")
+                || value.equalsIgnoreCase("null")
+                || value.equalsIgnoreCase("none");
+    }
+
+    private static String parseValue(String raw) {
+        String value = raw.trim();
+        if (value.startsWith("\"") || value.startsWith("'")) {
+            char quote = value.charAt(0);
+            int end = value.indexOf(quote, 1);
+            if (end > 0) {
+                return value.substring(1, end).trim();
             }
         }
-        return value;
+        int hash = value.indexOf('#');
+        if (hash >= 0) {
+            value = value.substring(0, hash);
+        }
+        return value.trim();
     }
 }

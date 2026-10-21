@@ -21,12 +21,11 @@ public final class VersionRanges {
 
     public static VersionRange fromNames(String minimumVersion, String maximumVersion) {
         ProtocolVersion minimum = requireKnown(minimumVersion);
+        if (maximumVersion == null || maximumVersion.isBlank()) {
+            return new VersionRange(minimumVersion.trim(), null, minimum, null);
+        }
         ProtocolVersion maximum = requireKnown(maximumVersion);
-        return new VersionRange(
-                minimumVersion.trim(),
-                maximumVersion.trim(),
-                minimum.getProtocol(),
-                maximum.getProtocol());
+        return new VersionRange(minimumVersion.trim(), maximumVersion.trim(), minimum, maximum);
     }
 
     private static ProtocolVersion requireKnown(String name) {

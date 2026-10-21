@@ -8,5 +8,11 @@
 # Versions that share a protocol are the same client: 1.21.7 and 1.21.8 both
 # speak protocol 772, so a minimum of 1.21.8 still accepts 1.21.7.
 
-minimum-version: "1.21.4"
+minimum-version: "1.21.11"
+
+#
+# Leave maximum-version out, or set it to "", to accept every version at or
+# above the minimum. Incompatible clients then see:
+#     1.21.4+ Supported
+
 maximum-version: "26.3"

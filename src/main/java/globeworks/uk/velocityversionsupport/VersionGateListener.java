@@ -10,9 +10,12 @@
 package globeworks.uk.velocityversionsupport;
 
 import com.velocitypowered.api.event.PostOrder;
+import com.velocitypowered.api.event.ResultedEvent;
 import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.event.connection.PreLoginEvent;
 import com.velocitypowered.api.event.proxy.ProxyPingEvent;
+import com.velocitypowered.api.network.ProtocolVersion;
 import com.velocitypowered.api.proxy.server.ServerPing;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -31,23 +34,33 @@ public final class VersionGateListener {
 
     @Subscribe(order = PostOrder.LAST)
     public void onPing(ProxyPingEvent event) {
-        int protocol = event.getConnection().getProtocolVersion().getProtocol();
-        if (range.allows(protocol)) {
+        ProtocolVersion client = event.getConnection().getProtocolVersion();
+        if (range.allows(client)) {
             return;
         }
         ServerPing ping = event.getPing();
         event.setPing(ping.asBuilder()
-                .version(new ServerPing.Version(range.mismatchedProtocol(protocol), range.label()))
+                .version(new ServerPing.Version(range.mismatchedProtocol(client.getProtocol()), range.label()))
                 .build());
     }
 
     @Subscribe(order = PostOrder.LAST)
     public void onPreLogin(PreLoginEvent event) {
-        int protocol = event.getConnection().getProtocolVersion().getProtocol();
-        if (range.allows(protocol)) {
+        if (range.allows(event.getConnection().getProtocolVersion())) {
             return;
         }
-        event.setResult(PreLoginEvent.PreLoginComponentResult.denied(
-                Component.text(range.label(), NamedTextColor.RED)));
+        event.setResult(PreLoginEvent.PreLoginComponentResult.denied(rejection()));
+    }
+
+    @Subscribe(order = PostOrder.LAST)
+    public void onLogin(LoginEvent event) {
+        if (range.allows(event.getPlayer().getProtocolVersion())) {
+            return;
+        }
+        event.setResult(ResultedEvent.ComponentResult.denied(rejection()));
+    }
+
+    private Component rejection() {
+        return Component.text(range.label(), NamedTextColor.RED);
     }
 }

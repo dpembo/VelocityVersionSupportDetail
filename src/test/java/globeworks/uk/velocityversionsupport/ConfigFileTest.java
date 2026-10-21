@@ -10,9 +10,12 @@
 package globeworks.uk.velocityversionsupport;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.velocitypowered.api.network.ProtocolVersion;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -26,9 +29,13 @@ class ConfigFileTest {
         try (InputStream in = ConfigFile.class.getResourceAsStream("/config.yml")) {
             String text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             VersionRange range = ConfigFile.fromLines(List.of(text.split("\\R", -1)));
-            assertEquals("1.21.4 - 26.3 Supported", range.label());
-            assertTrue(range.allows(range.minimumProtocol()));
-            assertTrue(range.allows(range.maximumProtocol()));
+            assertTrue(range.allows(range.minimum()));
+            if (range.maximumVersion() == null) {
+                assertEquals(range.minimumVersion() + "+ Supported", range.label());
+            } else {
+                assertEquals(range.minimumVersion() + " - " + range.maximumVersion() + " Supported", range.label());
+                assertTrue(range.allows(range.maximum()));
+            }
         }
     }
 
@@ -44,8 +51,27 @@ class ConfigFileTest {
     }
 
     @Test
-    void rejectsAMissingKey() {
+    void missingMaximumAcceptsAnythingAtOrAboveTheMinimum() {
+        VersionRange range = ConfigFile.fromLines(List.of("minimum-version: \"1.21.1\""));
+        assertNull(range.maximum());
+        assertEquals("1.21.1+ Supported", range.label());
+        assertFalse(range.allows(ProtocolVersion.MINECRAFT_1_20_5));
+        assertTrue(range.allows(ProtocolVersion.MINECRAFT_1_21));
+        assertTrue(range.allows(ProtocolVersion.MINECRAFT_1_21_7));
+    }
+
+    @Test
+    void blankMaximumIsTheSameAsLeavingItOut() {
+        VersionRange range = ConfigFile.fromLines(List.of(
+                "minimum-version: \"1.21.4\"",
+                "maximum-version: \"\""));
+        assertNull(range.maximumVersion());
+        assertEquals("1.21.4+ Supported", range.label());
+    }
+
+    @Test
+    void rejectsAMissingMinimum() {
         assertThrows(IllegalArgumentException.class, () -> ConfigFile.fromLines(List.of(
-                "minimum-version: \"1.21.4\"")));
+                "maximum-version: \"26.3\"")));
     }
 }
